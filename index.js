@@ -135,14 +135,14 @@
       const property = json.properties[key]
       let type = property.type;
       if (type === undefined) {
-        // record
+        // object 
         const ref = property.$ref 
         console.log(type, ref)
         const innerTypeName = capitalizeFirstLetter(key) + 'Type'
         const schema = apiDocsResponse.components.schemas[ref2field(ref)]
         const data = generateInterface(schema, innerTypeName, 'object')
         dep.push(data.result,...data.dep)
-        type = innerTypeName; // 或者你可以递归地生成嵌套的接口
+        type = innerTypeName; 
       } else if (type === 'array') {
         const ref = property.items?.$ref
         console.log(type, ref)
@@ -150,7 +150,12 @@
         const schema = apiDocsResponse.components.schemas[ref2field(ref)]
         const data = generateInterface(schema, innerTypeName, 'object')
         dep.push(data.result, ...data.dep) 
-        type = `${innerTypeName}[]`; // 或者你可以根据 'items' 属性生成具体的类型
+        type = `${innerTypeName}[]`;
+      } else if (type === 'integer') {
+        type = 'number'
+      } else if (type === 'string' && property.enum) {
+        type = name + capitalizeFirstLetter(key)
+        dep.push(generateEnum(type, property.enum))
       }
       result += `  ${key}: ${type};\n`;
     }
@@ -186,6 +191,22 @@
     if (type === 'array') {
       return `type ${name} = `
     }
+
+    if (type === 'enum') {
+      return `enum ${name} = `
+    }
+  }
+
+  /**
+   * @author: tzx
+   * @description: 
+   * @param { string } name 
+   * @param { Array<string> } enums
+   */
+  function generateEnum(name, enums = []) {
+    if (!enums.length || !name)
+      return ''
+    return generateSarter('enum', name) + enums.map(s => `'${s}'`).join(' | ') + '\n'
   }
 
 })()
