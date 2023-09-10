@@ -42,9 +42,7 @@
     return hook_fetch(...args)
   }
 
-  $(document).on('click', '.opblock', function(event) {
-    const container = event.currentTarget
-    if ($(container).hasClass('is-open')) return 
+  function setupContainer(container) {
     const pathEle = $(container).find('.opblock-summary-path').first()
     const methodEle = $(container).find('.opblock-summary-method').first()
     const path = $(pathEle).data('path')
@@ -54,11 +52,16 @@
       path,
       method 
     })
+  }
+
+  $(document).on('click', '.opblock', function(event) {
+    const container = event.currentTarget
+    if ($(container).hasClass('is-open')) return 
+    setupContainer(container) 
   });
 
   $(document).on('click', '.gen-ts', function(event) {
     const btn = event.currentTarget
-    console.log() 
     const path = $(btn).data('path')
     const method = $(btn).data('method')
     if (!path) {
@@ -85,6 +88,65 @@
     console.log(result)
   });
 
+  $(document).on('click', '.ts-tab', function(event) {
+    const btn = event.currentTarget
+    const container = $(btn).closest('.model-example')
+    const codeContainer = $(container).children().last()
+    if ($(btn).hasClass('show')) {
+      $(container).children('.ts-container').hide()
+      $(btn).removeClass('show')
+    } else {
+      $(btn).addClass('show')
+      if ($(container).has('.ts-container').length) {
+        $(container).children('.ts-container').show()
+      } else {
+        const path = $(btn).data('path')
+        const method = $(btn).data('method')
+        if (!path) {
+          alert('Wrong path')
+          console.error('wrong path');
+          return
+        }
+        const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
+        if (!response) {
+          return console.error('No response model');
+        }
+
+        const { type, ref } = normalizeSchema(response['200']?.content?.['*/*']?.schema)
+
+        if (!ref) {
+          return console.error('No schemaRef');
+        }
+        const field = ref2field(ref)
+        const schema = apiDocsResponse.components.schemas[field]
+        console.log(schema)
+        const interfaceRaw = generateInterface(schema, 'HelloType', type)
+        console.log(interfaceRaw)
+        const result = combineInterfaces(interfaceRaw)
+        console.log(result)
+        if (!container) {
+          return console.error('no container');
+        }
+
+        const tsContainer = $(`
+          <div class="ts-container" style="margin-bottom: 5px">
+            <div class="highlight-code">
+              <pre class="example microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;">
+                <code style="white-space: pre;">
+                  ${result}
+                </code>
+              </pre>
+            </div>
+          </div>
+        `)
+
+        $(codeContainer).before(tsContainer)
+      }
+    }
+  })
+
+  
+
   function normalizeSchema(schemaRaw) {
     if (schemaRaw.$ref) {
       return {
@@ -103,7 +165,9 @@
   }
 
   function init() {
-    // generateaBtns(document)
+    $('.opblock.is-open').each(function(){
+      setupContainer(this)
+    })
   } 
 
   function generateaBtns(container, {
@@ -113,18 +177,22 @@
     const schemaItems = container.querySelectorAll('tr.response')
     console.log(schemaItems)
     schemaItems.forEach(item => {
-      const copyBtn = createBtn(path, method)
-      item.querySelector('a[data-name="model"]').parentNode.appendChild(copyBtn)
+      const tabBtn = createTab(path, method)
+      item.querySelector('.tab').appendChild(tabBtn)
     })
   }
 
-  function createBtn(path, method) {
-    const copyBtn = document.createElement('button')
-    copyBtn.classList.add('btn', 'gen-ts')
-    copyBtn.dataset.path = path 
-    copyBtn.dataset.method = method 
-    copyBtn.innerText = '复制 TS Interface'
-    return copyBtn
+  function createTab(path, method) {
+    const tabBtn = document.createElement('li')
+    tabBtn.classList.add('tabitem', 'ts-tab')
+    tabBtn.dataset.path = path 
+    tabBtn.dataset.method = method 
+    tabBtn.style.borderLeft = '1px solid rgba(0,0,0,.2)';
+    tabBtn.style.paddingLeft = '6px';
+    const innerALabel = document.createElement('a')
+    innerALabel.innerText = 'TS Interface'
+    tabBtn.append(innerALabel)
+    return tabBtn
   }
 
   function generateInterface(json, name, currentType) {
@@ -185,15 +253,15 @@
 
   function generateSarter(type, name) {
     if (type === 'object') {
-      return `interface ${name} {\n`;
+      return `\ninterface ${name} {\n`;
     }
 
     if (type === 'array') {
-      return `type ${name} = `
+      return `\ntype ${name} = `
     }
 
     if (type === 'enum') {
-      return `enum ${name} = `
+      return `\nenum ${name} = `
     }
   }
 
