@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Swagger typescript helper
 // @license      MIT
-// @version      0.0.1
+// @version      0.0.2
 // @description  一个帮助用户在 Swagger UI 中快速生成对应 Typescript 接口的脚本 / A script that assists users in quickly generating corresponding TypeScript interfaces in Swagger UI.
 // @author       Nauxscript
 // @run-at       document-start
@@ -141,6 +141,27 @@
         `)
 
         $(codeContainer).before(tsContainer)
+        const copyBtn = $(btn).children('.copy-btn')
+        copyBtn.show()
+        $(copyBtn).on('click', function(e) {
+          e.stopPropagation()
+          copyToClipboard(result).then(function() {
+            $(copyBtn).css('color', 'green')  
+            $(copyBtn).text('已复制') 
+            resetCopyBtn(copyBtn)
+          }).catch(() => {
+            $(copyBtn).css('color', 'red')  
+            $(copyBtn).text('复制失败') 
+            resetCopyBtn(copyBtn)
+          })
+        })
+
+        function resetCopyBtn(ele) {
+          setTimeout(() => {
+            $(ele).css('color', 'inherit')  
+            $(ele).text('点击复制')
+          }, 2000)
+        }
       }
     }
   })
@@ -192,6 +213,14 @@
     const innerALabel = document.createElement('a')
     innerALabel.innerText = 'TS Interface'
     tabBtn.append(innerALabel)
+    
+    const copyBtn = document.createElement('a')
+    copyBtn.classList.add('copy-btn')
+    copyBtn.innerText = '点击复制'
+    copyBtn.style.display = "none";
+    copyBtn.style.padding = "0 4px";
+    tabBtn.append(copyBtn)
+
     return tabBtn
   }
 
@@ -275,6 +304,26 @@
     if (!enums.length || !name)
       return ''
     return generateSarter('enum', name) + enums.map(s => `'${s}'`).join(' | ') + '\n'
+  }
+
+  function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text)
+    } else {
+      let textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = "absolute"
+      textArea.style.opacity = "0"
+      textArea.style.left = "-999999px"
+      textArea.style.top = window.scrollY + 'px'
+      document.body.append(textArea)
+      textArea.focus()
+      textArea.select()
+      return new Promise((resolve, reject) => {
+        document.execCommand('copy') ? resolve() : reject()
+        textArea.remove() 
+      })
+    }
   }
 
 })()
