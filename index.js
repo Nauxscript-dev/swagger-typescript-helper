@@ -50,10 +50,24 @@
     const path = $(pathEle).data('path')
     const method = $(methodEle).text()
     if (!path) return
-    setTimeout(generateaBtns, 200, container, {
-      path,
-      method 
-    })
+    setTimeout(() => {
+      if (method === 'POST') {
+        const requestBodyContainer = container.querySelectorAll('.opblock-description-wrapper')
+        generateaBtns(requestBodyContainer, {
+          path,
+          method,
+          type: 'requestBody'
+        })
+      }
+
+      // responses
+      const responseSchemaItems = container.querySelectorAll('tr.response')
+      generateaBtns(responseSchemaItems, {
+        path,
+        method,
+        type: 'responses'
+      })
+    }, 200)
   }
 
   $(document).on('click', '.opblock', function(event) {
@@ -104,28 +118,13 @@
       } else {
         const path = $(btn).data('path')
         const method = $(btn).data('method')
-        if (!path) {
-          alert('Wrong path')
-          console.error('wrong path');
-          return
-        }
-        const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
-        if (!response) {
-          return console.error('No response model');
-        }
-
-        const { type, ref } = normalizeSchema(response['200']?.content?.['*/*']?.schema)
-
-        if (!ref) {
-          return console.error('No schemaRef');
-        }
-        const field = ref2field(ref)
-        const schema = apiDocsResponse.components.schemas[field]
-        console.log(schema)
+        const reqOrRes = $(btn).data('type')
+        const { schema, type } = getSchema(reqOrRes, {
+          path,
+          method,
+        }) 
         const interfaceRaw = generateInterface(schema, 'HelloType', type)
-        console.log(interfaceRaw)
         const result = combineInterfaces(interfaceRaw)
-        console.log(result)
         if (!container) {
           return console.error('no container');
         }
@@ -168,6 +167,47 @@
     }
   })
 
+  function getSchema(reqOrRes, { path, method }) {
+    if (!path) {
+      throw new Error('Wrong path')
+    } 
+
+    if (reqOrRes === 'responses') {
+      const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
+      if (!response) {
+        throw new Error('No response model')
+      }
+      const { type, ref } = normalizeSchema(response['200']?.content?.['*/*']?.schema)
+      if (!ref) {
+        throw new Error('No schemaRef')
+      }
+      const field = ref2field(ref)
+      const schema = apiDocsResponse.components.schemas[field]
+      return {
+        schema,
+        type
+      }
+    }
+
+    if (reqOrRes === 'requestBody') {
+      const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.requestBody
+      if (!requestBody) {
+        throw new Error('No requestBody model')
+      }
+      const { type, ref } = normalizeSchema(requestBody.content?.['application/json']?.schema)
+      if (!ref) {
+        throw new Error('No schemaRef')
+      }
+      const field = ref2field(ref)
+      const schema = apiDocsResponse.components.schemas[field]
+      return {
+        schema,
+        type
+      }
+    }
+
+    return null
+  }
   
 
   function normalizeSchema(schemaRaw) {
@@ -193,24 +233,24 @@
     })
   } 
 
-  function generateaBtns(container, {
+  function generateaBtns(containers, {
     path,
-    method
+    method,
+    type
   }) {
-    const schemaItems = container.querySelectorAll('tr.response')
-    console.log(schemaItems)
-    schemaItems.forEach(item => {
-      const tabBtn = createTab(path, method)
+    containers.forEach(item => {
+      const tabBtn = createTab(path, method, type)
       const responseTab = item.querySelector('.tab')
       responseTab?.appendChild(tabBtn)
     })
   }
 
-  function createTab(path, method) {
+  function createTab(path, method, type) {
     const tabBtn = document.createElement('li')
     tabBtn.classList.add('tabitem', 'ts-tab')
     tabBtn.dataset.path = path 
     tabBtn.dataset.method = method 
+    tabBtn.dataset.type = type 
     tabBtn.style.borderLeft = '1px solid rgba(0,0,0,.2)';
     tabBtn.style.paddingLeft = '6px';
     const innerALabel = document.createElement('a')
@@ -245,12 +285,17 @@
         type = innerTypeName; 
       } else if (type === 'array') {
         const ref = property.items?.$ref
+        const fieldType = property.items?.type
         console.log(type, ref)
-        const innerTypeName = capitalizeFirstLetter(key) + 'Row'
-        const schema = apiDocsResponse.components.schemas[ref2field(ref)]
-        const data = generateInterface(schema, innerTypeName, 'object')
-        dep.push(data.result, ...data.dep) 
-        type = `${innerTypeName}[]`;
+        if (ref) {
+          const innerTypeName = capitalizeFirstLetter(key) + 'Row'
+          const schema = apiDocsResponse.components.schemas[ref2field(ref)]
+          const data = generateInterface(schema, innerTypeName, 'object')
+          dep.push(data.result, ...data.dep) 
+          type = `${innerTypeName}[]`;
+        } else if (fieldType) {
+          type = `${fieldType === 'integer' ? 'number' : fieldType}[]`
+        }
       } else if (type === 'integer') {
         type = 'number'
       } else if (type === 'string' && property.enum) {
