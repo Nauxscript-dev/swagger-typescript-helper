@@ -201,7 +201,8 @@
     console.log(schemaItems)
     schemaItems.forEach(item => {
       const tabBtn = createTab(path, method)
-      item.querySelector('.tab').appendChild(tabBtn)
+      const responseTab = item.querySelector('.tab')
+      responseTab?.appendChild(tabBtn)
     })
   }
 
