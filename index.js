@@ -90,7 +90,9 @@
       return console.error('No response model');
     }
 
-    const {type, ref} = normalizeSchema(response['200']?.content?.['*/*']?.schema)
+    const schemaWrapper = getSchemaWarpper(response)
+
+    const {type, ref} = normalizeSchema(schemaWrapper.schema)
     
     if (!ref) {
       return console.error('No schemaRef');
@@ -177,7 +179,10 @@
       if (!response) {
         throw new Error('No response model')
       }
-      const { type, ref } = normalizeSchema(response['200']?.content?.['*/*']?.schema)
+
+      const schemaWrapper = getSchemaWarpper(response)
+
+      const { type, ref } = normalizeSchema(schemaWrapper.schema)
       if (!ref) {
         throw new Error('No schemaRef')
       }
@@ -194,7 +199,10 @@
       if (!requestBody) {
         throw new Error('No requestBody model')
       }
-      const { type, ref } = normalizeSchema(requestBody.content?.['application/json']?.schema)
+
+      const schemaWrapper = getSchemaWarpper(response)
+
+      const { type, ref } = normalizeSchema(schemaWrapper.schema)
       if (!ref) {
         throw new Error('No schemaRef')
       }
@@ -372,6 +380,15 @@
         textArea.remove() 
       })
     }
+  }
+
+  function getSchemaWarpper(response) {
+    const allAccept = '*/*'
+    const jsonAccept = 'application/json'
+    const schemaWrapper = response['200']?.content?.[allAccept] || response['200']?.content?.[jsonAccept]
+    if (!schemaWrapper) 
+      throw new Error('No Schema')
+    return schemaWrapper
   }
 
 })()
