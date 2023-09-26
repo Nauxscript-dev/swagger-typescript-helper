@@ -51,25 +51,27 @@
     const method = $(methodEle).text()
     if (!path) return
     setTimeout(() => {
-      // request post
-      if (method === 'POST') {
+      const dict = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]  
+      if (!dict)
+        return
+      
+      //
+      if (dict.parameters) {
+        const requestBodyContainer = container.querySelectorAll('.opblock-section')
+        generateBtns(requestBodyContainer, {
+          path,
+          method,
+          type: 'parameters'
+        })
+      } else if (dict.requestBody) {
         const requestBodyContainer = container.querySelectorAll('.opblock-description-wrapper')
         generateBtns(requestBodyContainer, {
           path,
           method,
           type: 'requestBody'
         })
-      }
-
-      // request get
-      if (method === 'GET') {
-        const requestBodyContainer = container.querySelectorAll('.opblock-section')
-        generateBtnsNoTab(requestBodyContainer, {
-          path,
-          method,
-          type: 'requestBody'
-        })
-        // console.log('get!!');
+      } else {
+        console.error('Error Dict');
       }
 
       // responses
@@ -203,12 +205,12 @@
     }
   })
 
-  function getSchema(reqOrRes, { path, method }) {
+  function getSchema(schemaType, { path, method }) {
     if (!path) {
       throw new Error('Wrong path')
     } 
 
-    if (reqOrRes === 'responses') {
+    if (schemaType === 'responses') {
       const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
       if (!response) {
         throw new Error('No response model')
@@ -227,39 +229,34 @@
         type
       }
     }
-
-    if (reqOrRes === 'requestBody') {
-      let schemaWrapper 
-      if (method === 'GET') {
-        schemaWrapper = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.['parameters']?.[0]
-      } else {
-        const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.requestBody
-        if (!requestBody) {
-          throw new Error('No requestBody model')
-        }
-        schemaWrapper = getSchemaWarpper(requestBody) 
-      }
-
-      const { type, ref } = normalizeSchema(schemaWrapper.schema)
-      if (!ref) {
-        if (method === 'GET') {
-          return {
-            type: 'object',
-            schema: generateParamStructure(schemaWrapper.name, type)
-          } 
-        } else {
-          throw new Error('No schemaRef')
-        }
-      }
-      const field = ref2field(ref)
-      const schema = apiDocsResponse.components.schemas[field]
+    
+    let schemaWrapper 
+      
+    if (schemaType === 'parameters') {
+      schemaWrapper = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.[schemaType]
       return {
-        schema,
-        type
+        type: 'object',
+        schema: generateParamStructure(schemaWrapper)
       }
+    } else {
+      const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.[schemaType]
+      if (!requestBody) {
+        throw new Error('No requestBody model')
+      }
+      schemaWrapper = getSchemaWarpper(requestBody) 
     }
 
-    return null
+    const { type, ref } = normalizeSchema(schemaWrapper.schema)
+    if (!ref) {
+      console.error('No schemaRef');      
+      
+    }
+    const field = ref2field(ref)
+    const schema = apiDocsResponse.components.schemas[field]
+    return {
+      schema,
+      type
+    }
   }
   
 
@@ -299,25 +296,19 @@
     type
   }) {
     containers.forEach(item => {
-      const tabBtn = createTab(path, method, type)
-      const responseTab = item.querySelector('.tab')
-      responseTab?.appendChild(tabBtn)
+      let btn, tab
+      if (type === 'parameters') {
+        btn = createParammeterTab(path, method, type)
+        tab = item.querySelector('.tab-header')
+      } else {
+        btn = createTab(path, method, type)
+        tab = item.querySelector('.tab')
+      }
+      tab?.appendChild(btn)
     })
   }
 
-  function generateBtnsNoTab(containers, {
-    path,
-    method,
-    type
-  }) {
-    containers.forEach(item => {
-      const tabBtn = createNoTab(path, method, type)
-      const tabHeader = item.querySelector('.tab-header')
-      tabHeader?.appendChild(tabBtn)
-    })
-  }
-
-  function createNoTab(path, method, type) {
+  function createParammeterTab(path, method, type) {
     return $(`
       <div class="tab-item no-tab-trigger" data-path="${path}" data-method="${method}" data-type="${type}"><h4 class="opblock-title"><span>Parameters Interface</span></h4></div>      
     `)[0]
@@ -466,14 +457,18 @@
     return schemaWrapper
   }
 
-  function generateParamStructure(key, type) {
-    return {
-      properties: {
-        [key]: {
-          type
-        }
-      }
+  function generateParamStructure(parameters) {
+    if (!(parameters instanceof Array)) {
+      throw new Error('Parameters Schema Error')
     }
+    return parameters.reduce((prev, curr) => {
+      prev.properties[curr.name] = {
+        type: curr.schema.type
+      }
+      return prev
+    }, {
+      properties: {}
+    })
   }
 
 })()
