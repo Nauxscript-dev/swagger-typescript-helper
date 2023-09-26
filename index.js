@@ -51,18 +51,30 @@
     const method = $(methodEle).text()
     if (!path) return
     setTimeout(() => {
+      // request post
       if (method === 'POST') {
         const requestBodyContainer = container.querySelectorAll('.opblock-description-wrapper')
-        generateaBtns(requestBodyContainer, {
+        generateBtns(requestBodyContainer, {
           path,
           method,
           type: 'requestBody'
         })
       }
 
+      // request get
+      if (method === 'GET') {
+        const requestBodyContainer = container.querySelectorAll('.opblock-section')
+        generateBtnsNoTab(requestBodyContainer, {
+          path,
+          method,
+          type: 'requestBody'
+        })
+        // console.log('get!!');
+      }
+
       // responses
       const responseSchemaItems = container.querySelectorAll('tr.response')
-      generateaBtns(responseSchemaItems, {
+      generateBtns(responseSchemaItems, {
         path,
         method,
         type: 'responses'
@@ -76,35 +88,57 @@
     setupContainer(container) 
   });
 
-  $(document).on('click', '.gen-ts', function(event) {
+  $(document).on('click', '.tab-item', function(event) {
     const btn = event.currentTarget
-    const path = $(btn).data('path')
-    const method = $(btn).data('method')
-    if (!path) {
-      alert('Wrong path')
-      console.error('wrong path');
-      return
-    }
-    const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
-    if (!response) {
-      return console.error('No response model');
-    }
+    if ($(btn).hasClass('active'))
+      return;
+    if ($(btn).hasClass('no-tab-trigger')) {
+      console.log('parameters');
+      const container = $(btn).closest('.opblock-section')
 
-    const schemaWrapper = getSchemaWarpper(response['200'])
+      $(btn).addClass('active')
+      $(btn).prev().removeClass('active')
+      $(container).children('.parameters-container').children('.table-container').hide()
+      if ($(container).children('.parameters-container').has('.ts-container').length) {
+        $(container).children('.parameters-container').children('.ts-container').show()
+      } else {
+        const path = $(btn).data('path')
+        const method = $(btn).data('method')
+        const reqOrRes = $(btn).data('type')
+        const { schema, type } = getSchema(reqOrRes, {
+          path,
+          method,
+        }) 
+        const interfaceRaw = generateInterface(schema, 'HelloType', type)
+        const result = combineInterfaces(interfaceRaw)
+        if (!container) {
+          return console.error('no container');
+        }
 
-    const {type, ref} = normalizeSchema(schemaWrapper.schema)
-    
-    if (!ref) {
-      return console.error('No schemaRef');
+        const tsContainer = $(`
+          <div class="ts-container" style="padding: 20px;">
+            <div class="highlight-code">
+              <pre class="example microlight" style="display: block; overflow-x: auto; padding: 0.5em; background: rgb(51, 51, 51); color: white;">
+                <code style="white-space: pre;">
+                  ${result}
+                </code>
+              </pre>
+            </div>
+          </div>
+        `)
+        $(container).children('.parameters-container').append(tsContainer)
+      }
     }
-    const field = ref2field(ref)
-    const schema = apiDocsResponse.components.schemas[field]
-    console.log(schema) 
-    const interfaceRaw = generateInterface(schema, 'HelloType', type) 
-    console.log(interfaceRaw)
-    const result = combineInterfaces(interfaceRaw)
-    console.log(result)
-  });
+    if ($(btn).next().hasClass('no-tab-trigger')) {
+      console.log('parameters interface');
+      const container = $(btn).closest('.opblock-section')
+
+      $(btn).addClass('active')
+      $(btn).next().removeClass('active')
+      $(container).children('.parameters-container').children('.table-container').show()
+      $(container).children('.parameters-container').children('.ts-container').hide()
+    }   
+  })  
 
   $(document).on('click', '.ts-tab', function(event) {
     const btn = event.currentTarget
@@ -195,16 +229,27 @@
     }
 
     if (reqOrRes === 'requestBody') {
-      const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.requestBody
-      if (!requestBody) {
-        throw new Error('No requestBody model')
+      let schemaWrapper 
+      if (method === 'GET') {
+        schemaWrapper = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.['parameters']?.[0]
+      } else {
+        const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.requestBody
+        if (!requestBody) {
+          throw new Error('No requestBody model')
+        }
+        schemaWrapper = getSchemaWarpper(requestBody) 
       }
-
-      const schemaWrapper = getSchemaWarpper(requestBody)
 
       const { type, ref } = normalizeSchema(schemaWrapper.schema)
       if (!ref) {
-        throw new Error('No schemaRef')
+        if (method === 'GET') {
+          return {
+            type: 'object',
+            schema: generateParamStructure(schemaWrapper.name, type)
+          } 
+        } else {
+          throw new Error('No schemaRef')
+        }
       }
       const field = ref2field(ref)
       const schema = apiDocsResponse.components.schemas[field]
@@ -232,6 +277,13 @@
         ref: schemaRaw.items.$ref
       }
     }
+
+    if (schemaRaw?.type === 'string') {
+      return {
+        type: schemaRaw.type,
+        ref: schemaRaw.$ref
+      }
+    }
     throw new Error('unexpected type', schemaRaw)
   }
 
@@ -241,7 +293,7 @@
     })
   } 
 
-  function generateaBtns(containers, {
+  function generateBtns(containers, {
     path,
     method,
     type
@@ -252,6 +304,24 @@
       responseTab?.appendChild(tabBtn)
     })
   }
+
+  function generateBtnsNoTab(containers, {
+    path,
+    method,
+    type
+  }) {
+    containers.forEach(item => {
+      const tabBtn = createNoTab(path, method, type)
+      const tabHeader = item.querySelector('.tab-header')
+      tabHeader?.appendChild(tabBtn)
+    })
+  }
+
+  function createNoTab(path, method, type) {
+    return $(`
+      <div class="tab-item no-tab-trigger" data-path="${path}" data-method="${method}" data-type="${type}"><h4 class="opblock-title"><span>Parameters Interface</span></h4></div>      
+    `)[0]
+  } 
 
   function createTab(path, method, type) {
     const tabBtn = document.createElement('li')
@@ -389,6 +459,16 @@
     if (!schemaWrapper) 
       throw new Error('No Schema')
     return schemaWrapper
+  }
+
+  function generateParamStructure(key, type) {
+    return {
+      properties: {
+        [key]: {
+          type
+        }
+      }
+    }
   }
 
 })()
