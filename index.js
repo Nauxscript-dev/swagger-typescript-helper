@@ -455,7 +455,12 @@
   function getSchemaWarpper(rawBody) {
     const allAccept = '*/*'
     const jsonAccept = 'application/json'
-    const schemaWrapper = rawBody.content?.[allAccept] || rawBody?.content?.[jsonAccept]
+    const content = rawBody.content 
+    if (!content && typeof content !== 'object') {
+      throw new Error('No Content')
+    }
+    const innerKey = Object.keys(content).find(key => key.includes(allAccept) || key.includes(jsonAccept))
+    const schemaWrapper = content[innerKey]
     if (!schemaWrapper) 
       throw new Error('No Schema')
     return schemaWrapper
