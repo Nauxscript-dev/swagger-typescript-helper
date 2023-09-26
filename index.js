@@ -462,8 +462,14 @@
       throw new Error('Parameters Schema Error')
     }
     return parameters.reduce((prev, curr) => {
-      prev.properties[curr.name] = {
-        type: curr.schema.type
+      if (curr.schema.type) {
+        prev.properties[curr.name] = {
+          type: curr.schema.type
+        }
+      } else if (curr.schema.$ref) {
+        prev.properties[curr.name] = {
+          $ref: curr.schema.$ref
+        }
       }
       return prev
     }, {
