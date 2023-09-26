@@ -90,7 +90,7 @@
       return console.error('No response model');
     }
 
-    const schemaWrapper = getSchemaWarpper(response)
+    const schemaWrapper = getSchemaWarpper(response['200'])
 
     const {type, ref} = normalizeSchema(schemaWrapper.schema)
     
@@ -180,7 +180,7 @@
         throw new Error('No response model')
       }
 
-      const schemaWrapper = getSchemaWarpper(response)
+      const schemaWrapper = getSchemaWarpper(response['200'])
 
       const { type, ref } = normalizeSchema(schemaWrapper.schema)
       if (!ref) {
@@ -200,7 +200,7 @@
         throw new Error('No requestBody model')
       }
 
-      const schemaWrapper = getSchemaWarpper(response)
+      const schemaWrapper = getSchemaWarpper(requestBody)
 
       const { type, ref } = normalizeSchema(schemaWrapper.schema)
       if (!ref) {
@@ -382,10 +382,10 @@
     }
   }
 
-  function getSchemaWarpper(response) {
+  function getSchemaWarpper(rawBody) {
     const allAccept = '*/*'
     const jsonAccept = 'application/json'
-    const schemaWrapper = response['200']?.content?.[allAccept] || response['200']?.content?.[jsonAccept]
+    const schemaWrapper = rawBody.content?.[allAccept] || rawBody?.content?.[jsonAccept]
     if (!schemaWrapper) 
       throw new Error('No Schema')
     return schemaWrapper
