@@ -157,11 +157,23 @@
         const path = $(btn).data('path')
         const method = $(btn).data('method')
         const reqOrRes = $(btn).data('type')
-        const { schema, type } = getSchema(reqOrRes, {
+        const { schema, type, $ref } = getSchema(reqOrRes, {
           path,
           method,
         }) 
-        const interfaceRaw = generateInterface(schema, 'HelloType', type)
+
+        let postProcessedSchema = schema
+        if (type === 'array' && schema.type === 'object') {
+          postProcessedSchema = {
+            HellowType: schema,
+            items: {
+              $ref
+            },
+            type
+          }
+        }
+
+        const interfaceRaw = generateInterface(postProcessedSchema, 'HelloType', type)
         const result = combineInterfaces(interfaceRaw)
         if (!container) {
           return console.error('no container');
@@ -255,10 +267,23 @@
     const schema = apiDocsResponse.components.schemas[field]
     return {
       schema,
-      type
+      type,
+      $ref: ref
     }
   }
   
+
+  function getSchemaByRef(ref, schemaData) {
+    if (!ref || typeof ref !== 'string') 
+      return undefined
+    const keys = ref.split('/')
+    let r = schemaData
+    for (const key of keys) {
+      if (r[key]) 
+        r = r[key]
+    }
+    return r === apiDocsResponse ? undefined : r 
+  } 
 
   function normalizeSchema(schemaRaw) {
     if (schemaRaw.$ref) {
@@ -314,6 +339,8 @@
     `)[0]
   } 
 
+  
+
   function createTab(path, method, type) {
     const tabBtn = document.createElement('li')
     tabBtn.classList.add('tabitem', 'ts-tab')
@@ -336,10 +363,122 @@
     return tabBtn
   }
 
-  function generateInterface(json, name, currentType) {
+  function generateFnHelper(type) {
+    if (type === 'object') {
+      return generateObjectType
+    }
+
+    if (type === 'array') {
+      return generateArrayType 
+    }
+
+    return generateBasicType
+    
+  }  
+
+  //
+  function generateBasicType(schema, key) {
+
+    const {} = schema.properties
+  }  
+
+  function generateObjectType(propertyRaw, key, schemaData = apiDocsResponse) {
+    const { $ref } = propertyRaw 
+    const schema = getSchemaByRef($ref, schemaData)
+
+    if (schema || !schema.properties) {
+      throw new Error('generateObjectType inner error')
+    }
+
+    let typeValue = ''
+
+    const deps = []
+
+    for (const key in schema.properties) {
+      if (Object.hasOwnProperty.call(schema.properties, key)) {
+        const element = schema.properties[key];
+        const elementType = element.type || 'object'
+        const generateFn = generateFnHelper(elementType)
+        const { typeName, statementContent, deps: innerDeps } = generateFn(element, key) 
+        if (statementContent) {
+          deps.push(statementContent, ...innerDeps)
+        }
+        typeValue += `${key}: ${typeName}\n`
+      }
+    }
+
+    const typeName = `${capitalizeFirstLetter(key)}Type`
+
+    typeValue = `{
+      ${typeValue}
+    }`
+    
+    return {
+      typeName,
+      statementContent: typeValue,
+      deps
+    }
+  }  
+
+  // type === 'array'  
+  function generateArrayType(schema, key, dep) {
+    let typeValue = ''
+    // object row
+    if (schema.items.$ref) {
+      const innerTypeName = capitalizeFirstLetter(key) + 'Row'
+      const innerSchema = apiDocsResponse.components.schemas[ref2field(schema.items.$ref)]
+      const data = generateObjectType(innerSchema, innerTypeName, 'object')
+      dep.push(data.result, ...data.dep)
+      typeValue = `${innerTypeName}`
+    } else if (schema.item.type) {
+      // basic row
+      type = generateBasicType() 
+    }
+
+    // array row : todo   
+
+    if (!typeValue) {
+      throw new Error('generateArrayType inner error')
+    }
+
+    return `${typeValue}[]`    
+  }
+
+  function generateInterface(schema, name, wrapperType) {
+    if (!schema) {
+      return 'any'
+    }  
+
+    // store the inner generated type 
+    const deps = []
+
+    // gennerate head, such as:
+    // "type xxx = "
+    // "interface xxx "
+    let headStr = generateSarter(wrapperType, name)
+
+    const { type } = schema
+    // object
+    if (type === 'object') {
+      const { typeValue } = generateObjectType(schema, name, deps)
+      headStr += `${typeValue} \n`
+    } 
+
+
+    // array 
+    if (type === 'array') {
+      const { typeValue } = generateArrayType(schema, name, deps)
+      headStr += `${typeValue} \n`
+    }  
+    
+    console.log(headStr, deps);
+  }
+
+
+  function _generateInterface(json, name, wrapperType) {
     if (!json) return 'any'
     const dep = []
-    let result = generateSarter(currentType, name)
+    let result = generateSarter(wrapperType, name)
     for (const key in json.properties) {
       const property = json.properties[key]
       let type = property.type;
@@ -373,7 +512,7 @@
       }
       result += `  ${key}: ${type};\n`;
     }
-    if (currentType === 'object') {
+    if (wrapperType === 'object') {
       result += '}\n'
     } else {
       result += '[]'
