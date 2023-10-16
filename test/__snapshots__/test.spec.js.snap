@@ -1,0 +1,59 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`nested complex array in an object type 1`] = `
+{
+  "deps": [
+    "
+interface NameRowType {
+type: string
+  }",
+  ],
+  "statementContent": "
+interface HelloType {
+id: string
+name: NameRowType[]
+  }",
+  "typeName": "HelloType",
+}
+`;
+
+exports[`nested simple array in an object type 1`] = `
+{
+  "deps": [],
+  "statementContent": "
+interface HelloType {
+id: string
+name: string[]
+  }",
+  "typeName": "HelloType",
+}
+`;
+
+exports[`nested simple object in an object type 1`] = `
+{
+  "deps": [
+    "
+interface NameType {
+type: string
+  }",
+  ],
+  "statementContent": "
+interface HelloType {
+id: string
+name: NameType
+  }",
+  "typeName": "HelloType",
+}
+`;
+
+exports[`simple object type 1`] = `
+{
+  "deps": [],
+  "statementContent": "
+interface HelloType {
+id: string
+name: string
+  }",
+  "typeName": "HelloType",
+}
+`;
