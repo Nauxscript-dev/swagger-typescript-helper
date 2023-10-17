@@ -11,29 +11,25 @@ export function getSchemaByRef(ref, schemaData) {
 }
 
 export function generateFnHelper(type) {
-  if (type === 'object') {
+  if (type === 'object')
     return generateObjectType
-  }
 
-  if (type === 'array') {
+  if (type === 'array')
     return generateArrayType
-  }
 
   return generateBasicType
-
 }
 
 //
 export function generateBasicType(propertyRaw) {
   const { type } = propertyRaw
   let typeName = type
-  if (type === 'integer') {
+  if (type === 'integer')
     typeName = 'number'
-  }
 
   return {
     typeName,
-    deps: []
+    deps: [],
   }
 }
 
@@ -41,9 +37,8 @@ export function generateObjectType(propertyRaw, key, schemaData = apiDocsRespons
   const { $ref } = propertyRaw
   const schema = getSchemaByRef($ref, schemaData)
 
-  if (!schema || !schema.properties) {
+  if (!schema || !schema.properties)
     throw new Error('generateObjectType inner error')
-  }
 
   let typeValue = ''
 
@@ -51,17 +46,15 @@ export function generateObjectType(propertyRaw, key, schemaData = apiDocsRespons
 
   for (const key in schema.properties) {
     if (Object.hasOwnProperty.call(schema.properties, key)) {
-      const element = schema.properties[key];
+      const element = schema.properties[key]
       const elementType = element.type || 'object'
       const generateFn = generateFnHelper(elementType)
       const { typeName, statementContent, deps: innerDeps } = generateFn(element, key, schemaData)
-      if (statementContent) {
+      if (statementContent)
         deps.push(statementContent)
-      }
 
-      if (innerDeps.length) {
+      if (innerDeps.length)
         deps.push(...innerDeps)
-      }
 
       typeValue += `\n${key}: ${typeName}`
     }
@@ -75,42 +68,39 @@ export function generateObjectType(propertyRaw, key, schemaData = apiDocsRespons
   return {
     typeName,
     statementContent: `${generateHeadStr('object', typeName)}${typeValue}`,
-    deps
+    deps,
   }
 }
 
-// type === 'array'  
+// type === 'array'
 export function generateArrayType(propertyRaw, key, schemaData = apiDocsResponse) {
-  if (!propertyRaw.items)
-    if (!schema || !schema.properties) {
+  if (!propertyRaw.items) {
+    if (!schema || !schema.properties)
       throw new Error('generateArrayType inner error')
-    }
+  }
 
   const deps = []
   const type = propertyRaw.items.type || 'object'
   const generateFn = generateFnHelper(type)
   const { typeName, statementContent, deps: innerDeps } = generateFn(propertyRaw.items, `${key}Row`, schemaData)
 
-  if (statementContent) {
+  if (statementContent)
     deps.push(statementContent)
-  }
 
-  if (innerDeps.length) {
+  if (innerDeps.length)
     deps.push(...innerDeps)
-  }
 
   return {
     typeName: `${typeName}[]`,
-    deps
+    deps,
   }
 }
 
 export function generateInterface(schema, name, wrapperType) {
-  if (!schema) {
+  if (!schema)
     return 'any'
-  }
 
-  // store the inner generated type 
+  // store the inner generated type
   const deps = []
 
   // gennerate head, such as:
@@ -125,30 +115,27 @@ export function generateInterface(schema, name, wrapperType) {
     headStr += `${typeValue} \n`
   }
 
-
-  // array 
+  // array
   if (type === 'array') {
     const { typeValue } = generateArrayType(schema, name, deps)
     headStr += `${typeValue} \n`
   }
 
-  console.log(headStr, deps);
+  // eslint-disable-next-line no-console
+  console.log(headStr, deps)
 }
 
 function capitalizeFirstLetter(string) {
-  return string.charAt(0).toUpperCase() + string.slice(1);
+  return string.charAt(0).toUpperCase() + string.slice(1)
 }
 
 function generateHeadStr(type, name) {
-  if (type === 'object') {
-    return `\ninterface ${name} `;
-  }
+  if (type === 'object')
+    return `\ninterface ${name} `
 
-  if (type === 'array') {
+  if (type === 'array')
     return `\ntype ${name} = `
-  }
 
-  if (type === 'enum') {
+  if (type === 'enum')
     return `\ntype ${name} = `
-  }
 }

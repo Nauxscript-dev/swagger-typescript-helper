@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 // ==UserScript==
 // @name         Swagger typescript helper
 // @license      MIT
@@ -13,16 +14,16 @@
 // ==/UserScript==
 
 (function () {
-  'use strict';
+  'use strict'
 
   let apiDocsResponse
 
-  let hook_fetch = window.fetch; //储存原始fetch
-  window.unsafeWindow.fetch = async function (...args) { //劫持fetch
+  const hook_fetch = window.fetch // 储存原始fetch
+  window.unsafeWindow.fetch = async function (...args) { // 劫持fetch
     if (args[0].endsWith('/api-docs')) {
       return await hook_fetch(...args).then((oriRes) => {
-        let hookRes = oriRes.clone() //克隆原始response
-        hookRes.text().then(res => { //读取克隆response
+        const hookRes = oriRes.clone() // 克隆原始response
+        hookRes.text().then((res) => { // 读取克隆response
           try {
             res = JSON.parse(res)
             if (res?.components?.schemas && res?.paths) {
@@ -31,14 +32,16 @@
               setTimeout(() => {
                 init()
               }, 200)
-            } else {
-              console.error('Have no dict');
             }
-          } catch (error) {
-            console.error(error); 
+            else {
+              console.error('Have no dict')
+            }
+          }
+          catch (error) {
+            console.error(error)
           }
         })
-        return oriRes //返回原始response
+        return oriRes // 返回原始response
       })
     }
     return hook_fetch(...args)
@@ -49,29 +52,32 @@
     const methodEle = $(container).find('.opblock-summary-method').first()
     const path = $(pathEle).data('path')
     const method = $(methodEle).text()
-    if (!path) return
+    if (!path)
+      return
     setTimeout(() => {
-      const dict = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]  
+      const dict = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]
       if (!dict)
         return
-      
+
       //
       if (dict.parameters) {
         const requestBodyContainer = container.querySelectorAll('.opblock-section')
         generateBtns(requestBodyContainer, {
           path,
           method,
-          type: 'parameters'
+          type: 'parameters',
         })
-      } else if (dict.requestBody) {
+      }
+      else if (dict.requestBody) {
         const requestBodyContainer = container.querySelectorAll('.opblock-description-wrapper')
         generateBtns(requestBodyContainer, {
           path,
           method,
-          type: 'requestBody'
+          type: 'requestBody',
         })
-      } else {
-        console.error('Error Dict');
+      }
+      else {
+        console.error('Error Dict')
       }
 
       // responses
@@ -79,23 +85,24 @@
       generateBtns(responseSchemaItems, {
         path,
         method,
-        type: 'responses'
+        type: 'responses',
       })
     }, 200)
   }
 
-  $(document).on('click', '.opblock', function(event) {
+  $(document).on('click', '.opblock', (event) => {
     const container = event.currentTarget
-    if ($(container).hasClass('is-open')) return 
-    setupContainer(container) 
-  });
+    if ($(container).hasClass('is-open'))
+      return
+    setupContainer(container)
+  })
 
-  $(document).on('click', '.tab-item', function(event) {
+  $(document).on('click', '.tab-item', (event) => {
     const btn = event.currentTarget
     if ($(btn).hasClass('active'))
-      return;
+      return
     if ($(btn).hasClass('no-tab-trigger')) {
-      console.log('parameters');
+      console.log('parameters')
       const container = $(btn).closest('.opblock-section')
 
       $(btn).addClass('active')
@@ -103,19 +110,19 @@
       $(container).children('.parameters-container').children('.table-container').hide()
       if ($(container).children('.parameters-container').has('.ts-container').length) {
         $(container).children('.parameters-container').children('.ts-container').show()
-      } else {
+      }
+      else {
         const path = $(btn).data('path')
         const method = $(btn).data('method')
         const reqOrRes = $(btn).data('type')
         const { schema, type } = getSchema(reqOrRes, {
           path,
           method,
-        }) 
+        })
         const interfaceRaw = generateInterface(schema, 'HelloType', type)
         const result = combineInterfaces(interfaceRaw)
-        if (!container) {
-          return console.error('no container');
-        }
+        if (!container)
+          return console.error('no container')
 
         const tsContainer = $(`
           <div class="ts-container" style="padding: 20px;">
@@ -132,52 +139,53 @@
       }
     }
     if ($(btn).next().hasClass('no-tab-trigger')) {
-      console.log('parameters interface');
+      console.log('parameters interface')
       const container = $(btn).closest('.opblock-section')
 
       $(btn).addClass('active')
       $(btn).next().removeClass('active')
       $(container).children('.parameters-container').children('.table-container').show()
       $(container).children('.parameters-container').children('.ts-container').hide()
-    }   
-  })  
+    }
+  })
 
-  $(document).on('click', '.ts-tab', function(event) {
+  $(document).on('click', '.ts-tab', (event) => {
     const btn = event.currentTarget
     const container = $(btn).closest('.model-example')
     const codeContainer = $(container).children().last()
     if ($(btn).hasClass('show')) {
       $(container).children('.ts-container').hide()
       $(btn).removeClass('show')
-    } else {
+    }
+    else {
       $(btn).addClass('show')
       if ($(container).has('.ts-container').length) {
         $(container).children('.ts-container').show()
-      } else {
+      }
+      else {
         const path = $(btn).data('path')
         const method = $(btn).data('method')
         const reqOrRes = $(btn).data('type')
         const { schema, type, $ref } = getSchema(reqOrRes, {
           path,
           method,
-        }) 
+        })
 
         let postProcessedSchema = schema
         if (type === 'array' && schema.type === 'object') {
           postProcessedSchema = {
             HellowType: schema,
             items: {
-              $ref
+              $ref,
             },
-            type
+            type,
           }
         }
 
         const interfaceRaw = generateInterface(postProcessedSchema, 'HelloType', type)
         const result = combineInterfaces(interfaceRaw)
-        if (!container) {
-          return console.error('no container');
-        }
+        if (!container)
+          return console.error('no container')
 
         const tsContainer = $(`
           <div class="ts-container" style="margin-bottom: 5px">
@@ -194,22 +202,22 @@
         $(codeContainer).before(tsContainer)
         const copyBtn = $(btn).children('.copy-btn')
         copyBtn.show()
-        $(copyBtn).on('click', function(e) {
+        $(copyBtn).on('click', (e) => {
           e.stopPropagation()
-          copyToClipboard(result).then(function() {
-            $(copyBtn).css('color', 'green')  
-            $(copyBtn).text('已复制') 
+          copyToClipboard(result).then(() => {
+            $(copyBtn).css('color', 'green')
+            $(copyBtn).text('已复制')
             resetCopyBtn(copyBtn)
           }).catch(() => {
-            $(copyBtn).css('color', 'red')  
-            $(copyBtn).text('复制失败') 
+            $(copyBtn).css('color', 'red')
+            $(copyBtn).text('复制失败')
             resetCopyBtn(copyBtn)
           })
         })
 
         function resetCopyBtn(ele) {
           setTimeout(() => {
-            $(ele).css('color', 'inherit')  
+            $(ele).css('color', 'inherit')
             $(ele).text('点击复制')
           }, 2000)
         }
@@ -218,114 +226,113 @@
   })
 
   function getSchema(schemaType, { path, method }) {
-    if (!path) {
+    if (!path)
       throw new Error('Wrong path')
-    } 
 
     if (schemaType === 'responses') {
       const response = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.responses
-      if (!response) {
+      if (!response)
         throw new Error('No response model')
-      }
 
       const schemaWrapper = getSchemaWarpper(response['200'])
 
       const { type, ref } = normalizeSchema(schemaWrapper.schema)
-      if (!ref) {
+      if (!ref)
         throw new Error('No schemaRef')
-      }
+
       const field = ref2field(ref)
       const schema = apiDocsResponse.components.schemas[field]
       return {
         schema,
-        type
+        type,
       }
     }
-    
-    let schemaWrapper 
-      
+
+    let schemaWrapper
+
     if (schemaType === 'parameters') {
       schemaWrapper = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.[schemaType]
       return {
         type: 'object',
-        schema: generateParamStructure(schemaWrapper)
+        schema: generateParamStructure(schemaWrapper),
       }
-    } else {
+    }
+    else {
       const requestBody = apiDocsResponse.paths?.[path]?.[method.toLowerCase()]?.[schemaType]
-      if (!requestBody) {
+      if (!requestBody)
         throw new Error('No requestBody model')
-      }
-      schemaWrapper = getSchemaWarpper(requestBody) 
+
+      schemaWrapper = getSchemaWarpper(requestBody)
     }
 
     const { type, ref } = normalizeSchema(schemaWrapper.schema)
-    if (!ref) {
-      console.error('No schemaRef');      
-      
-    }
+    if (!ref)
+      console.error('No schemaRef')
+
     const field = ref2field(ref)
     const schema = apiDocsResponse.components.schemas[field]
     return {
       schema,
       type,
-      $ref: ref
+      $ref: ref,
     }
   }
-  
 
   function getSchemaByRef(ref, schemaData) {
-    if (!ref || typeof ref !== 'string') 
+    if (!ref || typeof ref !== 'string')
       return undefined
     const keys = ref.split('/')
     let r = schemaData
     for (const key of keys) {
-      if (r[key]) 
+      if (r[key])
         r = r[key]
     }
-    return r === apiDocsResponse ? undefined : r 
-  } 
+    return r === apiDocsResponse ? undefined : r
+  }
 
   function normalizeSchema(schemaRaw) {
     if (schemaRaw.$ref) {
       return {
         type: 'object',
-        ref: schemaRaw.$ref
+        ref: schemaRaw.$ref,
       }
     }
 
     if (schemaRaw?.type === 'array') {
       return {
         type: schemaRaw.type,
-        ref: schemaRaw.items.$ref
+        ref: schemaRaw.items.$ref,
       }
     }
 
     if (schemaRaw?.type === 'string') {
       return {
         type: schemaRaw.type,
-        ref: schemaRaw.$ref
+        ref: schemaRaw.$ref,
       }
     }
     throw new Error('unexpected type', schemaRaw)
   }
 
   function init() {
-    $('.opblock.is-open').each(function(){
+    $('.opblock.is-open').each(function () {
+      // eslint-disable-next-line ts/no-invalid-this
       setupContainer(this)
     })
-  } 
+  }
 
   function generateBtns(containers, {
     path,
     method,
-    type
+    type,
   }) {
-    containers.forEach(item => {
+    containers.forEach((item) => {
       let btn, tab
       if (type === 'parameters') {
         btn = createParammeterTab(path, method, type)
         tab = item.querySelector('.tab-header')
-      } else {
+      }
+      else {
         btn = createTab(path, method, type)
         tab = item.querySelector('.tab')
       }
@@ -337,58 +344,51 @@
     return $(`
       <div class="tab-item no-tab-trigger" data-path="${path}" data-method="${method}" data-type="${type}"><h4 class="opblock-title"><span>Parameters Interface</span></h4></div>      
     `)[0]
-  } 
-
-  
+  }
 
   function createTab(path, method, type) {
     const tabBtn = document.createElement('li')
     tabBtn.classList.add('tabitem', 'ts-tab')
-    tabBtn.dataset.path = path 
-    tabBtn.dataset.method = method 
-    tabBtn.dataset.type = type 
-    tabBtn.style.borderLeft = '1px solid rgba(0,0,0,.2)';
-    tabBtn.style.paddingLeft = '6px';
+    tabBtn.dataset.path = path
+    tabBtn.dataset.method = method
+    tabBtn.dataset.type = type
+    tabBtn.style.borderLeft = '1px solid rgba(0,0,0,.2)'
+    tabBtn.style.paddingLeft = '6px'
     const innerALabel = document.createElement('a')
-    innerALabel.innerText = 'TS Interface'
+    innerALabel.textContent = 'TS Interface'
     tabBtn.append(innerALabel)
-    
+
     const copyBtn = document.createElement('a')
     copyBtn.classList.add('copy-btn')
-    copyBtn.innerText = '点击复制'
-    copyBtn.style.display = "none";
-    copyBtn.style.padding = "0 4px";
+    copyBtn.textContent = '点击复制'
+    copyBtn.style.display = 'none'
+    copyBtn.style.padding = '0 4px'
     tabBtn.append(copyBtn)
 
     return tabBtn
   }
 
   function generateFnHelper(type) {
-    if (type === 'object') {
+    if (type === 'object')
       return generateObjectType
-    }
 
-    if (type === 'array') {
-      return generateArrayType 
-    }
+    if (type === 'array')
+      return generateArrayType
 
     return generateBasicType
-    
-  }  
+  }
 
   //
-  function generateBasicType(schema, key) {
-
-    const {} = schema.properties
-  }  
+  function generateBasicType() {
+    // const {} = schema.properties
+  }
 
   function generateObjectType(propertyRaw, key, schemaData = apiDocsResponse) {
-    const { $ref } = propertyRaw 
+    const { $ref } = propertyRaw
     const schema = getSchemaByRef($ref, schemaData)
 
-    if (schema || !schema.properties) {
+    if (schema || !schema.properties)
       throw new Error('generateObjectType inner error')
-    }
 
     let typeValue = ''
 
@@ -396,13 +396,13 @@
 
     for (const key in schema.properties) {
       if (Object.hasOwnProperty.call(schema.properties, key)) {
-        const element = schema.properties[key];
+        const element = schema.properties[key]
         const elementType = element.type || 'object'
         const generateFn = generateFnHelper(elementType)
-        const { typeName, statementContent, deps: innerDeps } = generateFn(element, key) 
-        if (statementContent) {
+        const { typeName, statementContent, deps: innerDeps } = generateFn(element, key)
+        if (statementContent)
           deps.push(statementContent, ...innerDeps)
-        }
+
         typeValue += `${key}: ${typeName}\n`
       }
     }
@@ -412,44 +412,43 @@
     typeValue = `{
       ${typeValue}
     }`
-    
+
     return {
       typeName,
       statementContent: typeValue,
-      deps
+      deps,
     }
-  }  
+  }
 
-  // type === 'array'  
+  // type === 'array'
   function generateArrayType(schema, key, dep) {
     let typeValue = ''
     // object row
     if (schema.items.$ref) {
-      const innerTypeName = capitalizeFirstLetter(key) + 'Row'
+      const innerTypeName = `${capitalizeFirstLetter(key)}Row`
       const innerSchema = apiDocsResponse.components.schemas[ref2field(schema.items.$ref)]
       const data = generateObjectType(innerSchema, innerTypeName, 'object')
       dep.push(data.result, ...data.dep)
       typeValue = `${innerTypeName}`
-    } else if (schema.item.type) {
+    }
+    else if (schema.item.type) {
       // basic row
-      type = generateBasicType() 
+      type = generateBasicType()
     }
 
-    // array row : todo   
+    // array row : todo
 
-    if (!typeValue) {
+    if (!typeValue)
       throw new Error('generateArrayType inner error')
-    }
 
-    return `${typeValue}[]`    
+    return `${typeValue}[]`
   }
 
   function generateInterface(schema, name, wrapperType) {
-    if (!schema) {
+    if (!schema)
       return 'any'
-    }  
 
-    // store the inner generated type 
+    // store the inner generated type
     const deps = []
 
     // gennerate head, such as:
@@ -462,62 +461,66 @@
     if (type === 'object') {
       const { typeValue } = generateObjectType(schema, name, deps)
       headStr += `${typeValue} \n`
-    } 
+    }
 
-
-    // array 
+    // array
     if (type === 'array') {
       const { typeValue } = generateArrayType(schema, name, deps)
       headStr += `${typeValue} \n`
-    }  
-    
-    console.log(headStr, deps);
+    }
+
+    console.log(headStr, deps)
   }
 
-
   function _generateInterface(json, name, wrapperType) {
-    if (!json) return 'any'
+    if (!json)
+      return 'any'
     const dep = []
     let result = generateSarter(wrapperType, name)
     for (const key in json.properties) {
       const property = json.properties[key]
-      let type = property.type;
+      let type = property.type
       if (type === undefined) {
-        // object 
-        const ref = property.$ref 
+        // object
+        const ref = property.$ref
         console.log(type, ref)
-        const innerTypeName = capitalizeFirstLetter(key) + 'Type'
+        const innerTypeName = `${capitalizeFirstLetter(key)}Type`
         const schema = apiDocsResponse.components.schemas[ref2field(ref)]
         const data = generateInterface(schema, innerTypeName, 'object')
-        dep.push(data.result,...data.dep)
-        type = innerTypeName; 
-      } else if (type === 'array') {
+        dep.push(data.result, ...data.dep)
+        type = innerTypeName
+      }
+      else if (type === 'array') {
         const ref = property.items?.$ref
         const fieldType = property.items?.type
         console.log(type, ref)
         if (ref) {
-          const innerTypeName = capitalizeFirstLetter(key) + 'Row'
+          const innerTypeName = `${capitalizeFirstLetter(key)}Row`
           const schema = apiDocsResponse.components.schemas[ref2field(ref)]
           const data = generateInterface(schema, innerTypeName, 'object')
-          dep.push(data.result, ...data.dep) 
-          type = `${innerTypeName}[]`;
-        } else if (fieldType) {
+          dep.push(data.result, ...data.dep)
+          type = `${innerTypeName}[]`
+        }
+        else if (fieldType) {
           type = `${fieldType === 'integer' ? 'number' : fieldType}[]`
         }
-      } else if (type === 'integer') {
+      }
+      else if (type === 'integer') {
         type = 'number'
-      } else if (type === 'string' && property.enum) {
+      }
+      else if (type === 'string' && property.enum) {
         type = name + capitalizeFirstLetter(key)
         dep.push(generateEnum(type, property.enum))
       }
-      result += `  ${key}: ${type};\n`;
+      result += `  ${key}: ${type};\n`
     }
-    if (wrapperType === 'object') {
+    if (wrapperType === 'object')
       result += '}\n'
-    } else {
+
+    else
       result += '[]'
-    }
-    return {result, dep};
+
+    return { result, dep }
   }
 
   function combineInterfaces(raw) {
@@ -529,55 +532,53 @@
   }
 
   function ref2field(ref) {
-    return ref.replace('#/components/schemas/', '')   
+    return ref.replace('#/components/schemas/', '')
   }
 
   function capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
+    return string.charAt(0).toUpperCase() + string.slice(1)
   }
 
   function generateSarter(type, name) {
-    if (type === 'object') {
-      return `\ninterface ${name} {\n`;
-    }
+    if (type === 'object')
+      return `\ninterface ${name} {\n`
 
-    if (type === 'array') {
+    if (type === 'array')
       return `\ntype ${name} = `
-    }
 
-    if (type === 'enum') {
+    if (type === 'enum')
       return `\ntype ${name} = `
-    }
   }
 
   /**
    * @author: tzx
-   * @description: 
-   * @param { string } name 
+   * @description:
+   * @param { string } name
    * @param { Array<string> } enums
    */
   function generateEnum(name, enums = []) {
     if (!enums.length || !name)
       return ''
-    return generateSarter('enum', name) + enums.map(s => `'${s}'`).join(' | ') + '\n'
+    return `${generateSarter('enum', name) + enums.map(s => `'${s}'`).join(' | ')}\n`
   }
 
   function copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
       return navigator.clipboard.writeText(text)
-    } else {
-      let textArea = document.createElement('textarea')
+    }
+    else {
+      const textArea = document.createElement('textarea')
       textArea.value = text
-      textArea.style.position = "absolute"
-      textArea.style.opacity = "0"
-      textArea.style.left = "-999999px"
-      textArea.style.top = window.scrollY + 'px'
+      textArea.style.position = 'absolute'
+      textArea.style.opacity = '0'
+      textArea.style.left = '-999999px'
+      textArea.style.top = `${window.scrollY}px`
       document.body.append(textArea)
       textArea.focus()
       textArea.select()
       return new Promise((resolve, reject) => {
-        document.execCommand('copy') ? resolve() : reject()
-        textArea.remove() 
+        document.execCommand('copy') ? resolve() : reject(new Error('copy error'))
+        textArea.remove()
       })
     }
   }
@@ -585,35 +586,35 @@
   function getSchemaWarpper(rawBody) {
     const allAccept = '*/*'
     const jsonAccept = 'application/json'
-    const content = rawBody.content 
-    if (!content && typeof content !== 'object') {
+    const content = rawBody.content
+    if (!content && typeof content !== 'object')
       throw new Error('No Content')
-    }
+
     const innerKey = Object.keys(content).find(key => key.includes(allAccept) || key.includes(jsonAccept))
     const schemaWrapper = content[innerKey]
-    if (!schemaWrapper) 
+    if (!schemaWrapper)
       throw new Error('No Schema')
     return schemaWrapper
   }
 
   function generateParamStructure(parameters) {
-    if (!(parameters instanceof Array)) {
+    if (!(Array.isArray(parameters)))
       throw new Error('Parameters Schema Error')
-    }
+
     return parameters.reduce((prev, curr) => {
       if (curr.schema.type) {
         prev.properties[curr.name] = {
-          type: curr.schema.type
+          type: curr.schema.type,
         }
-      } else if (curr.schema.$ref) {
+      }
+      else if (curr.schema.$ref) {
         prev.properties[curr.name] = {
-          $ref: curr.schema.$ref
+          $ref: curr.schema.$ref,
         }
       }
       return prev
     }, {
-      properties: {}
+      properties: {},
     })
   }
-
 })()

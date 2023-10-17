@@ -1,9 +1,9 @@
-import { test, expect } from 'vitest';
-import { generateObjectType } from '../core';
+import { expect, it } from 'vitest'
+import { generateObjectType } from '../src/core'
 
-test('simple object type', () => {
+it('simple object type', () => {
   const result = generateObjectType({
-    $ref: '#/components/schemas/a.test.data'
+    $ref: '#/components/schemas/a.test.data',
   }, 'hello', {
     components: {
       schemas: {
@@ -11,26 +11,26 @@ test('simple object type', () => {
           description: 'test schema',
           properties: {
             id: {
-              description: "id string",
-              type: "string"
+              description: 'id string',
+              type: 'string',
             },
             name: {
-              description: "name string",
-              type: "string"
-            }
+              description: 'name string',
+              type: 'string',
+            },
           },
-          required: ["id"],
-          type: "object"
-        }
-      }
-    }
-  }) 
+          required: ['id'],
+          type: 'object',
+        },
+      },
+    },
+  })
   expect(result).matchSnapshot()
 })
 
-test('nested simple object in an object type', () => {
+it('nested simple object in an object type', () => {
   const result = generateObjectType({
-    $ref: '#/components/schemas/a.test.data'
+    $ref: '#/components/schemas/a.test.data',
   }, 'hello', {
     components: {
       schemas: {
@@ -38,65 +38,35 @@ test('nested simple object in an object type', () => {
           description: 'test schema',
           properties: {
             id: {
-              description: "id string",
-              type: "string"
+              description: 'id string',
+              type: 'string',
             },
             name: {
-              $ref: '#/components/schemas/b.test.data' 
-            }
+              $ref: '#/components/schemas/b.test.data',
+            },
           },
-          type: "object"
+          type: 'object',
         },
         'b.test.data': {
           description: 'test schema 2',
           properties: {
             type: {
-              type: "string",
-              description: "type string",
+              type: 'string',
+              description: 'type string',
             },
           },
-          type: "object" 
+          type: 'object',
 
-        }
-      }
-    }
-  }) 
-  expect(result).matchSnapshot()
-})
-
-test('nested simple array in an object type', () => {
-  const result = generateObjectType({
-    $ref: '#/components/schemas/a.test.data'
-  }, 'hello', {
-    components: {
-      schemas: {
-        'a.test.data': {
-          description: 'test schema',
-          properties: {
-            id: {
-              description: "id string",
-              type: "string"
-            },
-            name: {
-              description: 'object inner array',
-              type: "array",
-              items: {
-                type: "string",
-                description: 'array inner string'
-              }
-            }
-          },
-          type: "object"
         },
-      }
-    }
-  }) 
+      },
+    },
+  })
   expect(result).matchSnapshot()
 })
 
-test('nested complex array in an object type', () => {
+it('nested simple array in an object type', () => {
   const result = generateObjectType({
-    $ref: '#/components/schemas/a.test.data'
+    $ref: '#/components/schemas/a.test.data',
   }, 'hello', {
     components: {
       schemas: {
@@ -104,31 +74,61 @@ test('nested complex array in an object type', () => {
           description: 'test schema',
           properties: {
             id: {
-              description: "id string",
-              type: "string"
+              description: 'id string',
+              type: 'string',
             },
             name: {
               description: 'object inner array',
-              type: "array",
+              type: 'array',
               items: {
-                $ref: '#/components/schemas/b.test.data' 
-              }
-            }
+                type: 'string',
+                description: 'array inner string',
+              },
+            },
           },
-          type: "object"
+          type: 'object',
+        },
+      },
+    },
+  })
+  expect(result).matchSnapshot()
+})
+
+it('nested complex array in an object type', () => {
+  const result = generateObjectType({
+    $ref: '#/components/schemas/a.test.data',
+  }, 'hello', {
+    components: {
+      schemas: {
+        'a.test.data': {
+          description: 'test schema',
+          properties: {
+            id: {
+              description: 'id string',
+              type: 'string',
+            },
+            name: {
+              description: 'object inner array',
+              type: 'array',
+              items: {
+                $ref: '#/components/schemas/b.test.data',
+              },
+            },
+          },
+          type: 'object',
         },
         'b.test.data': {
           description: 'test schema 2',
           properties: {
             type: {
-              type: "string",
-              description: "type string",
+              type: 'string',
+              description: 'type string',
             },
           },
-          type: "object" 
-        }
-      }
-    }
-  }) 
+          type: 'object',
+        },
+      },
+    },
+  })
   expect(result).matchSnapshot()
 })
