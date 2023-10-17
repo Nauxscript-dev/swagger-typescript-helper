@@ -1,16 +1,20 @@
 {
   "name": "jira-subtask-quick-creator",
-  "type": "module",
-  "version": "1.0.0",
-  "description": "",
-  "author": "",
-  "license": "ISC",
+  "version": "0.0.7",
+  "description": "一个帮助用户在 Swagger UI 中快速生成对应 Typescript 接口的脚本 / A script that assists users in quickly generating corresponding TypeScript interfaces in Swagger UI.",
+  "author": "nauxscript",
+  "license": "MIT",
   "keywords": [],
-  "main": "src/index.js",
+  "main": "./src/index.js",
   "scripts": {
+    "build": "unbuild",
+    "dev": "unbuild --stub",
     "test": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "unbuild": "^2.0.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "1.0.0-beta.27",
